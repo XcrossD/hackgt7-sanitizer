@@ -103,9 +103,10 @@ class _MapPageState extends State<MapPage> {
                                   ? BitmapDescriptor.hueGreen
                                   : BitmapDescriptor.hueRed),
                           infoWindow: InfoWindow(
-                            title: doc['name'],
-                            snippet: doc['address'],
-                          ));
+                              title: doc['has_sanitizer']
+                                  ? doc['name'] + ' (No hand sanitizer)'
+                                  : doc['name'] + ' (Hand sanitizer available)',
+                              snippet: doc['address']));
                       // setState(() {
                       _markers[queryDocumentSnapshot.id] = marker;
                       // });
