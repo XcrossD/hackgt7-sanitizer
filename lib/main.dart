@@ -190,8 +190,7 @@ class _UserPageState extends State<UserPage> {
         builder: (context) => Center(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: ListView(
               children: <Widget>[
                 TextField(
                   decoration: InputDecoration(
