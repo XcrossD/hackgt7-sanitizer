@@ -3,8 +3,15 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_google_places/flutter_google_places.dart';
+import 'package:google_maps_webservice/places.dart';
+import 'package:geocoder/geocoder.dart';
 
 void main() => runApp(MyApp());
+
+const API_KEY = 'API_KEY';
+
+GoogleMapsPlaces _places = GoogleMapsPlaces(apiKey: API_KEY);
 
 class MyApp extends StatelessWidget {
   @override
@@ -138,16 +145,13 @@ class UserPage extends StatefulWidget {
 }
 
 class _UserPageState extends State<UserPage> {
+  Prediction place;
   String restaurantName;
-  String address;
-  String latitude;
-  String longitude;
+  double latitude;
+  double longitutude;
   int hasHandSanitizer = 0;
 
   final nameController = TextEditingController();
-  final addressController = TextEditingController();
-  final latController = TextEditingController();
-  final lngController = TextEditingController();
 
   void _showToast(BuildContext context) {
     final scaffold = Scaffold.of(context);
@@ -156,11 +160,40 @@ class _UserPageState extends State<UserPage> {
     ));
   }
 
+  Text _showRestaurantInfo() {
+    String text = (place == null ? '' : place.description);
+    return Text(text);
+  }
+
   @override
   void dispose() {
     // Clean up the controller when the widget is disposed.
     nameController.dispose();
     super.dispose();
+  }
+
+  Future<Null> displayPrediction(Prediction p) async {
+    if (p != null) {
+      PlacesDetailsResponse detail =
+          await _places.getDetailsByPlaceId(p.placeId);
+
+      var placeId = p.placeId;
+      double lat = detail.result.geometry.location.lat;
+      double lng = detail.result.geometry.location.lng;
+
+      var address = await Geocoder.local.findAddressesFromQuery(p.description);
+
+      setState(() {
+        place = p;
+        restaurantName = p.terms[0].value;
+        latitude = lat;
+        longitutude = lng;
+      });
+
+      print(lat);
+      print(lng);
+      print(p.terms);
+    }
   }
 
   @override
@@ -174,9 +207,9 @@ class _UserPageState extends State<UserPage> {
           .doc(restaurantName.toLowerCase().replaceAll(RegExp(r"\s+"), ""))
           .set({
         'name': restaurantName,
-        'address': address,
-        'lat': double.parse(latitude),
-        'lng': double.parse(longitude),
+        'address': place.description,
+        'lat': latitude,
+        'lng': longitutude,
         'has_sanitizer': (hasHandSanitizer == 1 ? true : false),
       }).then((value) {
         print('Restaurant Added');
@@ -192,37 +225,22 @@ class _UserPageState extends State<UserPage> {
             padding: const EdgeInsets.all(16.0),
             child: ListView(
               children: <Widget>[
-                TextField(
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Restaurant',
+                ElevatedButton(
+                  onPressed: () async {
+                    Prediction p = await PlacesAutocomplete.show(
+                      context: context,
+                      apiKey: API_KEY,
+                    );
+
+                    await displayPrediction(p);
+                  },
+                  child: Text(
+                    'Enter name',
+                    style: Theme.of(context).textTheme.headline4,
                   ),
-                  controller: nameController,
                 ),
                 Text(''),
-                TextField(
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Address',
-                  ),
-                  controller: addressController,
-                ),
-                Text(''),
-                TextField(
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Latitude',
-                  ),
-                  controller: latController,
-                ),
-                Text(''),
-                TextField(
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Longitude',
-                  ),
-                  controller: lngController,
-                ),
+                _showRestaurantInfo(),
                 Text(''),
                 Row(
                   children: [
@@ -258,18 +276,12 @@ class _UserPageState extends State<UserPage> {
                 Text(''),
                 ElevatedButton(
                   onPressed: () {
-                    restaurantName = nameController.text;
-                    address = addressController.text;
-                    latitude = latController.text;
-                    longitude = lngController.text;
-                    if (restaurantName != "" &&
-                        address != "" &&
-                        double.tryParse(latitude) != null &&
-                        double.tryParse(longitude) != null) {
-                      addRestaurant();
-                      _showToast(context);
-                      // Navigator.pop(context);
-                    }
+                    addRestaurant();
+                    _showToast(context);
+                    setState(() {
+                      place = null;
+                    });
+                    // Navigator.pop(context);
                   },
                   child: Text('Submit'),
                 ),
